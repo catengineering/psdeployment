@@ -38,16 +38,13 @@ function GetDeploymentInfo([string]$deploymentname,[string]$resourcegroup,[strin
 }
 
 ### Paths for Templates
-$templateName = "azuredeploy.json"
-$templateParameters = "azuredeploy.parameters.json"
-$rootpath = "C:\Users\johm\source\projectannandale\ARM Templates for Automated Deployment\TemplateTester\"
-$vnetvmss = $rootpath + "templateb-vnet-vmss\templateb-vnet-vmss\"
-$vnetvmsstemplate = $vnetvmss + $templateName
-$vnetvmsstemplateparams = $vnetvmss + $templateParameters
+$rootpath = $home + "\psdeployment\"
+$templateName = $rootpath + "azuredeploy.json"
+$templateParameters = $rootpath + "azuredeploy.parameters.json"
 ###
 
 $location = GetRegion
 
-$info = DeployTemplate $vnetvmsstemplate $vnetvmsstemplateparams $location
+$info = DeployTemplate $templateName $templateParameters $location
 
 $output = GetDeploymentInfo $info[1].DeploymentName $info[1].ResourceGroupName $info[0].Location
