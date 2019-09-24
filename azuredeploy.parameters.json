@@ -2,30 +2,5 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "virtualNetworkName": {
-      "value": "vnet1"
-    },
-    "vnetAddressPrefix": {
-      "value": "10.0.0.0/16"
-
-    },
-    "subnetPrefix": {
-      "value": "10.0.0.0/24"
-    },
-    "subnetName": {
-      "value": "subnet1"
-    },
-    "applicationGatewayName": {
-      "value": "appgw1"
-    },
-    "applicationGatewaySize": {
-      "value": "Standard_Small"
-    },
-    "applicationGatewayInstanceCount": {
-      "value": "2"
-    },
-    "location": {
-      "value": "westus"
-    }
   }
 }

@@ -2,108 +2,46 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "virtualNetworkName": {
+    "vnetName": {
       "type": "string",
+      "defaultValue": "[concat('vnet',uniqueString(resourceGroup().name))]",
       "metadata": {
-        "description": "virtual network name"
+        "description": "VNet name"
       }
     },
     "vnetAddressPrefix": {
       "type": "string",
       "defaultValue": "10.0.0.0/16",
       "metadata": {
-        "description": "virtual network address range"
+        "description": "Address prefix"
       }
     },
-    "subnetName": {
-      "type": "string",
-      "defaultValue": "subnet1",
-      "metadata": {
-        "description": "Subnet Name"
-      }
-    },
-    "subnetPrefix": {
+    "subnet1Prefix": {
       "type": "string",
       "defaultValue": "10.0.0.0/24",
       "metadata": {
-        "description": "Subnet prefix"
+        "description": "Subnet 1 Prefix"
       }
     },
-    "applicationGatewayName": {
+    "subnet1Name": {
       "type": "string",
-      "defaultValue": "applicationGateway1",
+      "defaultValue": "Subnet1",
       "metadata": {
-        "description": "application gateway name"
+        "description": "Subnet 1 Name"
       }
     },
-    "applicationGatewaySize": {
+    "subnet2Prefix": {
       "type": "string",
-      "allowedValues": [
-        "Standard_Small",
-        "Standard_Medium",
-        "Standard_Large"
-      ],
-      "defaultValue": "Standard_Small",
+      "defaultValue": "10.0.1.0/24",
       "metadata": {
-        "description": "application gateway size"
+        "description": "Subnet 2 Prefix"
       }
     },
-    "applicationGatewayInstanceCount": {
-      "type": "int",
-      "allowedValues": [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10
-      ],
-      "defaultValue": 2,
-      "metadata": {
-        "description": "application gateway instance count"
-      }
-    },
-    "frontendPort": {
-      "type": "int",
-      "defaultValue": 80,
-      "metadata": {
-        "description": "application gateway front end port"
-      }
-    },
-    "backendPort": {
-      "type": "int",
-      "defaultValue": 80,
-      "metadata": {
-        "description": "application gateway back end port"
-      }
-    },
-    "backendIPAddresses": {
-      "type": "array",
-      "defaultValue": [
-        {
-          "IpAddress": "10.0.0.4"
-        },
-        {
-          "IpAddress": "10.0.0.5"
-        }
-      ],
-      "metadata": {
-        "description": "back end pool ip addresses"
-      }
-    },
-    "cookieBasedAffinity": {
+    "subnet2Name": {
       "type": "string",
-      "allowedValues": [
-        "Enabled",
-        "Disabled"
-      ],
-      "defaultValue": "Disabled",
+      "defaultValue": "Subnet2",
       "metadata": {
-        "description": "cookie based affinity"
+        "description": "Subnet 2 Name"
       }
     },
     "location": {
@@ -112,88 +50,270 @@
       "metadata": {
         "description": "Location for all resources."
       }
+    },
+    "vmssPrefix": {
+      "type": "string",
+      "defaultValue": "[concat('ss',uniqueString(resourceGroup().id))]",
+      "metadata": {
+        "description": "VMSS Prefix Name, prefix + unique string is 15 charachters max length"
+      }
+    },
+    "vmssInstanceCount": {
+      "type": "int",
+      "defaultValue": 3,
+      "metadata": {
+        "description": "Min Amount of Deploy Instances in VMSS"
+      }
+    },
+    "adminUserName": {
+      "type": "string",
+      "minLength": 4,
+      "defaultValue": "msadmin",
+      "metadata": {
+        "description": "username for scaleset"
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "defaultValue": "Ilikecheese26!",
+      "minLength": 8,
+      "metadata": {
+        "description": "Password for admin account"
+      }
+    },
+    "appName": {
+      "type": "string",
+      "defaultValue": "[concat('func',uniqueString(resourceGroup().name))]",
+      "metadata": {
+        "description": "The name of the function app that you wish to create."
+      }
+    },
+    "sku": {
+      "type": "string",
+      "allowedValues": [
+        "Free",
+        "Shared",
+        "Basic",
+        "Standard"
+      ],
+      "defaultValue": "Standard",
+      "metadata": {
+        "description": "The pricing tier for the hosting plan."
+      }
+    },
+    "workerSize": {
+      "type": "string",
+      "allowedValues": [
+        "0",
+        "1",
+        "2"
+      ],
+      "defaultValue": "0",
+      "metadata": {
+        "description": "The instance size of the hosting plan (small, medium, or large)."
+      }
+    },
+    "storageAccountType": {
+      "type": "string",
+      "defaultValue": "Standard_LRS",
+      "allowedValues": [
+        "Standard_LRS",
+        "Standard_GRS",
+        "Standard_ZRS",
+        "Premium_LRS"
+      ],
+      "metadata": {
+        "description": "Storage Account type"
+      }
     }
+
   },
   "variables": {
-    "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('subnetName'))]",
     "apiVersions": {
       "networkApi": "2018-10-01",
-      "appgatewayApi": "2017-06-01"
+      "vmscalesetApiVersion": "2018-10-01",
+      "publicIPApiVersion": "2018-12-01",
+      "appGwApiVersion": "2018-12-01",
+      "storageApiVersion": "2015-06-15",
+      "serverFarmApiVersion": "2015-04-01",
+      "websitesApiVersion": "2015-04-01",
+      "sitesApiVersion": "2015-08-01"
+    },
+    "vmScaleSetConfig": {
+      "config": {
+        "vmssPrefix": "[parameters('vmssPrefix')]",
+        "vmssInstanceCount": "[parameters('vmssInstanceCount')]",
+        "vmssVMSize": "Standard_DS1_v2",
+        "vmssTier": "Standard",
+        "vmssNic": "[concat(parameters('vmssPrefix'),'-NIC')]",
+        "ipconfig": "[concat(parameters('vmssPrefix'),'-ipconfig')]"
+      }
+    },
+    "imageReference": {
+      "publisher": "Canonical",
+      "offer": "UbuntuServer",
+      "sku": "16.04-LTS",
+      "version": "latest"
+    },
+    "appGwPublicIPAddressName": "[concat('appGwPip',uniqueString(resourceGroup().name))]",
+    "appGwName": "[concat('appGw',uniqueString(resourceGroup().name))]",
+    "appGwdeployment": {
+      "config": {
+
+        "appGwPublicIPAddressID": "[resourceId('Microsoft.Network/publicIPAddresses',variables('appGwPublicIPAddressName'))]",
+        "appGwID": "[resourceId('Microsoft.Network/applicationGateways',variables('appGwName'))]",
+        "appGwSubnetName": "[parameters('subnet2Name')]",
+        "appGwSubnetPrefix": "[parameters('subnet2Prefix')]",
+        "appGwSubnetID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnet2Name'))]",
+        "appGwBePoolName": "[concat(parameters('vmssPrefix'), 'appGwBepool')]",
+        "appGwFrontendPort": 80,
+        "appGwBackendPort": 8080,
+        "sku": "Standard_v2",
+        "tier": "Standard_v2",
+        "capacity": "2"
+      }
+    },
+    "functionapp": {
+      "config": {
+        "functionAppName": "[parameters('appName')]",
+        "hostingPlanName": "[concat(parameters('appName'), '-plan')]",
+        "storageAccountName": "[concat(uniquestring(resourceGroup().id), 'functions')]",
+        "appInsightsName": "[concat('appi',uniquestring(resourceGroup().name))]"
+      }
     }
   },
   "resources": [
     {
-      "apiVersion": "[variables('apiVersions').appgatewayApi]",
-      "name": "[parameters('applicationGatewayName')]",
-      "type": "Microsoft.Network/applicationGateways",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('appGwPublicIPAddressName')]",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "[variables('apiVersions').publicIPApiVersion]",
+      "sku": {
+        "name": "Standard"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Static"
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').networkApi]",
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "[parameters('vnetName')]",
       "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('vnetAddressPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[parameters('subnet1Name')]",
+            "properties": {
+              "addressPrefix": "[parameters('subnet1Prefix')]"
+            }
+          },
+          {
+            "name": "[parameters('subnet2Name')]",
+            "properties": {
+              "addressPrefix": "[parameters('subnet2Prefix')]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/applicationGateways",
+      "name": "[variables('appGwName')]",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "[variables('apiVersions').appGwApiVersion]",
       "dependsOn": [
-        "[concat('Microsoft.Network/virtualNetworks/', parameters('virtualNetworkName'))]"
+
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('appGwPublicIPAddressName'))]",
+        "[parameters('vnetName')]"
       ],
       "properties": {
         "sku": {
-          "name": "[parameters('applicationGatewaySize')]",
-          "tier": "Standard",
-          "capacity": "[parameters('applicationGatewayInstanceCount')]"
+          "name": "[variables('appGwdeployment').config.sku]",
+          "tier": "[variables('appGwdeployment').config.tier]",
+          "capacity": "[variables('appGwdeployment').config.capacity]"
         },
         "gatewayIPConfigurations": [
           {
-            "name": "appGatewayIpConfig",
+            "name": "appGwIpConfig",
             "properties": {
               "subnet": {
-                "id": "[variables('subnetRef')]"
+                "id": "[variables('appGwdeployment').config.appGwSubnetID]"
               }
             }
           }
         ],
         "frontendIPConfigurations": [
           {
-            "name": "appGatewayFrontendIP",
+            "name": "appGwFrontendIP",
             "properties": {
-              "subnet": {
-                "id": "[variables('subnetRef')]"
+              "PublicIPAddress": {
+                "id": "[variables('appGwdeployment').config.appGwPublicIPAddressID]"
               }
             }
           }
         ],
         "frontendPorts": [
           {
-            "name": "appGatewayFrontendPort",
+            "name": "appGwFrontendPort",
             "properties": {
-              "Port": "[parameters('frontendPort')]"
+              "Port": "[variables('appGwdeployment').config.appGwFrontendPort]"
             }
           }
         ],
         "backendAddressPools": [
           {
-            "name": "appGatewayBackendPool",
-            "properties": {
-              "BackendAddresses": "[parameters('backendIPAddresses')]"
-            }
+            "name": "[variables('appGwdeployment').config.appGwBePoolName]"
           }
         ],
         "backendHttpSettingsCollection": [
           {
-            "name": "appGatewayBackendHttpSettings",
+            "name": "appGwBackendHttpSettings",
             "properties": {
-              "Port": "[parameters('backendPort')]",
+              "Port": "[variables('appGwdeployment').config.appGwBackendPort]",
               "Protocol": "Http",
-              "CookieBasedAffinity": "[parameters('cookieBasedAffinity')]"
+              "CookieBasedAffinity": "Disabled",
+              "probe": {
+                "id": "[concat(variables('appGwdeployment').config.appGwID, '/probes/beprobe')]"
+              }
             }
           }
         ],
         "httpListeners": [
           {
-            "name": "appGatewayHttpListener",
+            "name": "appGwHttpListener",
             "properties": {
-              "FrontendIpConfiguration": {
-                "Id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/frontendIPConfigurations/appGatewayFrontendIP')]"
+              "FrontendIPConfiguration": {
+                "Id": "[concat(variables('appGwdeployment').config.appGwID, '/frontendIPConfigurations/appGwFrontendIP')]"
               },
               "FrontendPort": {
-                "Id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/frontendPorts/appGatewayFrontendPort')]"
+                "Id": "[concat(variables('appGwdeployment').config.appGwID, '/frontendPorts/appGwFrontendPort')]"
               },
               "Protocol": "Http",
               "SslCertificate": null
+            }
+          }
+        ],
+        "probes": [
+          {
+            "name": "beprobe",
+            "properties": {
+              "protocol": "Http",
+              "host": "127.0.0.1",
+              "path": "/health",
+              "interval": 5,
+              "timeout": 2,
+              "unhealthyThreshold": 2,
+              "match": {
+                "statusCodes": [
+                  "200"
+                ]
+              }
             }
           }
         ],
@@ -203,18 +323,155 @@
             "properties": {
               "RuleType": "Basic",
               "httpListener": {
-                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/httpListeners/appGatewayHttpListener')]"
+                "id": "[concat(variables('appGwdeployment').config.appGwID, '/httpListeners/appGwHttpListener')]"
               },
               "backendAddressPool": {
-                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendAddressPools/appGatewayBackendPool')]"
+                "id": "[concat(variables('appGwdeployment').config.appGwID, '/backendAddressPools/', variables('appGwdeployment').config.appGwBePoolName)]"
               },
               "backendHttpSettings": {
-                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendHttpSettingsCollection/appGatewayBackendHttpSettings')]"
+                "id": "[concat(variables('appGwdeployment').config.appGwID, '/backendHttpSettingsCollection/appGwBackendHttpSettings')]"
               }
             }
           }
         ]
       }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachineScaleSets",
+      "name": "[variables('vmScaleSetConfig').config.vmssPrefix]",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "[variables('apiVersions').vmscalesetApiVersion]",
+      "dependsOn": [
+        "[parameters('vnetName')]",
+        "[variables('appGwName')]"
+
+      ],
+      "sku": {
+        "name": "[variables('vmScaleSetConfig').config.vmssVMSize]",
+        "tier": "[variables('vmScaleSetConfig').config.vmssTier]",
+        "capacity": "[variables('vmScaleSetConfig').config.vmssInstanceCount]"
+      },
+      "properties": {
+        "overprovision": "false",
+        "singlePlacementGroup": "false",
+        "platformFaultDomainCount": 1,
+        "upgradePolicy": {
+          "mode": "Manual"
+        },
+        "virtualMachineProfile": {
+          "storageProfile": {
+            "osDisk": {
+              "caching": "ReadWrite",
+              "createOption": "FromImage"
+            },
+            "dataDisks": [],
+            "imageReference": "[variables('imageReference')]"
+          },
+          "osProfile": {
+            "computerNamePrefix": "[variables('vmScaleSetConfig').config.vmssPrefix]",
+            "adminUsername": "[parameters('adminUsername')]",
+            "adminPassword": "[parameters('adminPassword')]"
+
+          },
+          "networkProfile": {
+            "networkInterfaceConfigurations": [
+              {
+                "name": "[variables('vmScaleSetConfig').config.vmssNic]",
+                "properties": {
+                  "primary": true,
+                  "ipConfigurations": [
+                    {
+                      "name": "[variables('vmScaleSetConfig').config.ipconfig]",
+                      "properties": {
+                        "subnet": {
+                          "id": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/virtualNetworks/', parameters('vnetName'), '/subnets/', parameters('subnet1Name'))]"
+                        },
+                        "ApplicationGatewayBackendAddressPools": [
+                          {
+                            "id": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/applicationGateways/', variables('appGwName'), '/backendAddressPools/', variables('appGwdeployment').config.appGwBePoolName)]"
+                          }
+                        ]
+
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "[variables('functionapp').config.appInsightsName]",
+      "type": "microsoft.insights/components",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-05-01",
+      "properties": {
+        "ApplicationId": "[variables('functionapp').config.appInsightsName]",
+        "Application_Type": "web",
+        "Flow_Type": "Bluefield",
+        "Request_Source": "rest"
+      },
+      "tags": {
+        "[concat('hidden-link:', resourceGroup().id, '/providers/Microsoft.Web/sites/', variables('functionapp').config.functionAppName)]": "Resource"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[concat('stor',uniqueString(resourceGroup().name))]",
+      "apiVersion": "[variables('apiVersions').storageApiVersion]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[parameters('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "[variables('apiVersions').serverFarmApiVersion]",
+      "name": "[variables('functionapp').config.hostingPlanName]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "name": "[variables('functionapp').config.hostingPlanName]",
+        "sku": "[parameters('sku')]",
+        "workerSize": "[parameters('workerSize')]",
+        "hostingEnvironment": "",
+        "numberOfWorkers": 1
+      }
+    },
+    {
+      "apiVersion": "[variables('apiVersions').sitesApiVersion]",
+      "type": "Microsoft.Web/sites",
+      "name": "[variables('functionapp').config.functionAppName]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('functionapp').config.hostingPlanName)]",
+        "[resourceId('Microsoft.Storage/storageAccounts', concat('stor',uniqueString(resourceGroup().name)))]",
+        "[resourceId('microsoft.insights/components', variables('functionapp').config.appInsightsName)]"
+      ],
+      "kind": "functionapp",
+      "properties": {
+        "name": "[variables('functionapp').config.functionAppName]",
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('functionapp').config.hostingPlanName)]",
+        "hostingEnvironment": "",
+        "clientAffinityEnabled": false,
+        "siteConfig": {
+          "alwaysOn": true,
+          "cors": {
+            "allowedOrigins": [
+              "*"
+            ]
+          },
+          "appSettings": [
+            {
+              "name": "FUNCTIONS_EXTENSION_VERSION",
+              "value": "~2"
+            }
+          ]
+        }
+      }
     }
-  ]
-}
+   ],
+
+      "outputs": {}
+    }
