@@ -1,7 +1,8 @@
 ﻿
 function DeployTemplate([string]$pathtotemplate,[string]$pathtoparameters,[string]$location)
 {
- $resourcegroupname = "testerrg" + ([Datetime]::Now).ToShortDateString().Replace("/","-")
+ $random = Get-Random 
+ $resourcegroupname = "rg-" + $random + "-" + ([Datetime]::Now).ToShortDateString().Replace("/","-")
  New-AzResourceGroup -Name $resourcegroupname -Location $location 
  $name = 'AzureTest' + $location + ([Datetime]::Now).ToShortDateString().Replace("/","-")
  $deploymentinfo = New-AzResourceGroupDeployment -Name $name -ResourceGroupName $resourcegroupname -TemplateParameterFile $pathtoparameters -TemplateFile $pathtotemplate 
